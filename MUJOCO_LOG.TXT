@@ -1,0 +1,6 @@
+Mon Nov 11 14:29:15 2024
+ERROR: Auxiliary framebuffer is not complete, error 0x8cd6
+
+Mon Nov 11 14:30:33 2024
+ERROR: Auxiliary framebuffer is not complete, error 0x8cd6
+
