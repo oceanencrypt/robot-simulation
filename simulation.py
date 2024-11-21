@@ -35,7 +35,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-CONTROL_PANEL = False
+CONTROL_PANEL = True
 
 DEFAULT_OBJ_URL = "https://terafac-welding-pro.s3.amazonaws.com/welding_objects/Corner_Joint_fe2890e3.obj"
 
@@ -68,7 +68,7 @@ class RobotControlGUI:
         self.create_widgets()
         self.setup_path_visualization()
 
-        self.sim_thread = threading.Thread(target=self.simulator.run_simulation)
+        self.sim_thread = threading.Thread(target=self.simulator.run_simulation_GUI)
         self.sim_thread.daemon = True
         self.sim_thread.start()
 
@@ -218,6 +218,8 @@ class MujocoSimulator:
         self.recording = False
         self.video_dir = "simulation_videos"
         self.last_simulation = None
+        self.current_movement_path = []
+        self.last_update_time = 0
 
         if not os.path.exists(self.video_dir):
             os.makedirs(self.video_dir)
@@ -590,7 +592,7 @@ class MujocoSimulator:
     def run_simulation(self):
         self.running = True
         while self.running:
-            if self.viewer is not None:
+            if self.viewer is not None and not CONTROL_PANEL:
                 try:
                     user_input = input("Enter command (simulate/move/quit): ")
                     if user_input.lower() == "quit":
@@ -617,6 +619,35 @@ class MujocoSimulator:
         if self.viewer is not None:
             self.viewer.close()
 
+    def run_simulation_GUI(self):
+        self.running = True
+        while self.running:
+            if self.viewer is not None:
+                current_time = time.time()
+                if current_time - self.last_update_time >= 0.001:
+                    self.last_update_time = current_time
+                
+                self.viewer.sync()
+                
+                try:
+                    if self.command_queue.qsize() <= 1:
+                        self.done_welding = True
+                    else:
+                        self.done_welding = False
+                    cmd = self.command_queue.get_nowait()
+                    self.move_to_position(*cmd)
+                except queue.Empty:
+                    pass
+                
+                if not self.viewer.is_running():
+                    break
+                    
+            time.sleep(0.001)
+        
+        self.running = False
+        if self.viewer is not None:
+            self.viewer.close()
+  
     def get_joint_angles(self):
         if self.data is not None:
             return self.data.qpos[:6].copy()
@@ -666,8 +697,9 @@ def run_simulation(coordinates, obj_url, simulator):
 if __name__ == "__main__":
     simulator = MujocoSimulator()
     if CONTROL_PANEL:
+        simulator.load_scene({})
         gui = RobotControlGUI(simulator)
         gui.run()
-
-    coordinates = [(0.1, 0.1, 0.1), (0.1, 0.2, 0.1), (0.2, 0.2, 0.1), (0.2, 0.2, 0.2)]
-    run_simulation(coordinates, "", simulator)
+    else:
+        coordinates = [(0.1, 0.1, 0.1), (0.1, 0.2, 0.1), (0.2, 0.2, 0.1), (0.2, 0.2, 0.2)]
+        run_simulation(coordinates, "", simulator)
