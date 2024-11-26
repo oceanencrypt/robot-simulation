@@ -470,7 +470,7 @@ class MujocoSimulator:
         self.load_obj_and_setup(obj_url, marker_url)
 
     def simulate(self, x, y, z):
-        self.command_queue.put((x, y, z))
+        self.command_queue.put((y, x, z))
 
 
 def run_simulation(coordinates, obj_url, simulator):
@@ -481,7 +481,7 @@ def run_simulation(coordinates, obj_url, simulator):
     recording_started = False
 
     for x, y, z in coordinates:
-        simulator.command_queue.put((x, y, z))
+        simulator.command_queue.put((y, x, z))
 
     while simulator.running:
         if not simulator.command_queue.empty():

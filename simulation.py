@@ -173,7 +173,7 @@ class RobotControlGUI:
         y = self.y_var.get()
         z = self.z_var.get()
         self.simulator.movement_speed = self.speed_var.get()
-        self.simulator.command_queue.put((x, y, z))
+        self.simulator.command_queue.put((y, x, z))
 
     def weld(self):
         self.simulator.weld()
@@ -603,7 +603,7 @@ class MujocoSimulator:
                     elif user_input.lower() == "move":
                         target_input = input("Enter new target position (x y z): ")
                         x, y, z = map(float, target_input.split())
-                        simulator.simulate(x, y, z)
+                        simulator.simulate(y, x, z)
                     cmd = self.command_queue.get_nowait()
                     self.move_to_position(*cmd)
                 except ValueError as e:
@@ -659,7 +659,7 @@ class MujocoSimulator:
         self.load_obj_and_setup(obj_url, marker_url)
 
     def simulate(self, x, y, z):
-        self.command_queue.put((x, y, z))
+        self.command_queue.put((y, x, z))
 
 
 def run_simulation(coordinates, obj_url, simulator):
@@ -672,7 +672,7 @@ def run_simulation(coordinates, obj_url, simulator):
     recording_started = False
 
     for x, y, z in coordinates:
-        simulator.command_queue.put((x, y, z))
+        simulator.command_queue.put((y, x, z))
 
     while simulator.running:
         if not simulator.command_queue.empty():
@@ -690,6 +690,9 @@ def run_simulation(coordinates, obj_url, simulator):
             break
 
         time.sleep(0.1)
+
+    simulator.running = True    
+    simulator.viewer.close()
 
     return simulator.last_simulation
 
