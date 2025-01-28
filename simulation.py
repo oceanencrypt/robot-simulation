@@ -27,6 +27,10 @@ import cv2
 from mujoco import gl_context
 import imageio
 import glfw
+from coordinates import sio
+import sys
+import json
+
 
 logging.basicConfig(
     level=logging.INFO,
@@ -35,19 +39,74 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-CONTROL_PANEL = True
+welding_data = None
 
-DEFAULT_OBJ_URL = "https://terafac-welding-pro.s3.amazonaws.com/welding_objects/Corner_Joint_fe2890e3.obj"
+CONTROL_PANEL = False
 
-WORKBENCH_SIZE = "0.1240 0.1767 0.001"
-WORKBENCH_POSITION = "0.3 0 0.001"
+DEFAULT_OBJ_URL = "https://terafac-pnc.s3.amazonaws.com/welding_objects/cuboid.obj"
 
-MESH_SCALE = "0.002 0.002 0.002"
-MESH_POSITION = "0.3 0 0.061"
+WORKBENCH_SIZE = "0.1240 0.1767 0.001" #0.1240 0.1767 0.001
+WORKBENCH_POSITION = "0.3 0 0.001" # The centroid of the workbench.
+
+MESH_SCALE = "0.0008 0.0008 0.0008" #MESH_SCALE = "0.002 0.002 0.002"0.0008 0.0008 0.0008
+MESH_POSITION = "0.3 0 0.001" #0.04037 -0.1279 -0.1715
+#0.3 0 0.061
 
 
-def interpolate_positions(start, end, steps):
-    return [start + (end - start) * i / steps for i in range(steps + 1)]
+
+def calculate_bounding_box(obj_file_path):
+    """
+    Calculate the bounding box of an .obj file.
+    Returns the center, dimensions, and minimum z-coordinate of the bounding box.
+    """
+    min_x, min_y, min_z = float('inf'), float('inf'), float('inf')
+    max_x, max_y, max_z = float('-inf'), float('-inf'), float('-inf')
+
+    with open(obj_file_path, 'r') as file:
+        for line in file:
+            if line.startswith('v '):  # Vertex data
+                _, x, y, z = line.strip().split()
+                x, y, z = float(x), float(y), float(z)
+                min_x, min_y, min_z = min(min_x, x), min(min_y, y), min(min_z, z)
+                max_x, max_y, max_z = max(max_x, x), max(max_y, y), max(max_z, z)
+
+    # Center of the bounding box
+    center_x = (min_x + max_x) / 2
+    center_y = (min_y + max_y) / 2
+    center_z = (min_z + max_z) / 2
+
+    # Dimensions of the bounding box
+    dimensions = (max_x - min_x, max_y - min_y, max_z - min_z)
+
+    return (center_x, center_y, center_z), dimensions, min_z
+
+
+def apply_scale(center, dimensions, mesh_scale):
+    """
+    Scale the bounding box center and dimensions.
+    """
+    scale_x, scale_y, scale_z = map(float, mesh_scale.split())
+    scaled_center = (center[0] * scale_x, center[1] * scale_y, center[2] * scale_z)
+    scaled_dimensions = (dimensions[0] * scale_x, dimensions[1] * scale_y, dimensions[2] * scale_z)
+    return scaled_center, scaled_dimensions
+
+def calculate_mesh_position(obj_center, workbench_position, mesh_scale, min_z):
+    """
+    Align the object's center to the workbench center and adjust the z-coordinate to sit on the workbench.
+    """
+    workbench_x, workbench_y, workbench_z = map(float, workbench_position.split())
+    scale_x, scale_y, scale_z = map(float, mesh_scale.split())
+
+    # Offset for x and y (center alignment)
+    offset_x = workbench_x - obj_center[0]
+    offset_y = workbench_y - obj_center[1]
+
+    # Adjust z-coordinate to align the bottom of the object with the workbench
+    offset_z = workbench_z - (min_z * scale_z)
+    print(f"z offset: {offset_z}")
+    print(f"min z : {min_z}")
+    return f"{offset_x:.5f} {offset_y:.5f} {offset_z:.5f}"
+
 
 
 class RobotControlGUI:
@@ -59,7 +118,7 @@ class RobotControlGUI:
         self.x_var = tk.DoubleVar(value=0.0)
         self.y_var = tk.DoubleVar(value=0.0)
         self.z_var = tk.DoubleVar(value=0.0)
-        self.speed_var = tk.DoubleVar(value=0.01)
+        self.speed_var = tk.DoubleVar(value=2000) # value = 0.01
         self.joint_labels = []
 
         self.root.grid_columnconfigure(0, weight=1)
@@ -123,6 +182,7 @@ class RobotControlGUI:
             label = ttk.Label(joint_frame, text=f"Joint {i+1}: 0.000 rad")
             label.grid(row=i, column=0, padx=5, pady=2, sticky="w")
             self.joint_labels.append(label)
+
 
     def setup_path_visualization(self):
 
@@ -374,8 +434,12 @@ class MujocoSimulator:
             raise
 
     def load_obj_and_setup(self, obj_url, marker_url=None):
-        """Loads OBJ file and optionally an Aruco marker, then sets up the simulation"""
+        """
+        Dynamically loads an OBJ file and updates its position to align with the workbench center
+        and sit properly on the workbench surface.
+        """
         try:
+            # Download OBJ file
             obj_filepath = self.download_obj_file(obj_url)
 
             if os.path.exists(obj_filepath):
@@ -383,19 +447,23 @@ class MujocoSimulator:
                 logger.info(f"✓ File saved at: {obj_filepath}")
                 logger.info(f"✓ File size: {os.path.getsize(obj_filepath)} bytes")
 
-            marker_filepath = None
+            # Calculate bounding box and scaled center
+            obj_center, obj_dimensions, min_z = calculate_bounding_box(obj_filepath)
+            print(f"The center of the obj is {obj_center}")
+            scaled_center, _ = apply_scale(obj_center, obj_dimensions, MESH_SCALE)
+            print(f"The scaled center of the obj is {scaled_center}")
+
+            # Update MESH_POSITION dynamically
+            global MESH_POSITION
+            MESH_POSITION = calculate_mesh_position(scaled_center, WORKBENCH_POSITION, MESH_SCALE, min_z)
+            logger.info(f"Dynamically calculated MESH_POSITION: {MESH_POSITION}")
+
+            # Proceed with loading the object into the scene
             if marker_url or marker_url == "":
                 marker_filepath = self.download_image(marker_url)
-                logger.info("✓ Marker image downloaded successfully")
-
-            if marker_filepath:
-                scene_path = self.create_scene_with_obj_and_marker(
-                    obj_filepath, marker_filepath
-                )
-                logger.info("✓ Scene created with OBJ and Aruco marker")
+                scene_path = self.create_scene_with_obj_and_marker(obj_filepath, marker_filepath)
             else:
                 scene_path = self.create_scene_with_obj(obj_filepath)
-                logger.info("✓ Scene created with OBJ only")
 
             self.model = mujoco.MjModel.from_xml_path(scene_path)
             self.data = mujoco.MjData(self.model)
@@ -411,21 +479,9 @@ class MujocoSimulator:
             self.my_chain = ikpy.chain.Chain.from_urdf_file(
                 "Tera.urdf",
                 active_links_mask=[
-                    False,
-                    True,
-                    False,
-                    True,
-                    False,
-                    True,
-                    False,
-                    True,
-                    False,
-                    True,
-                    False,
-                    True,
-                    False,
-                    False,
-                    False,
+                    False, True, False, True, False, True,
+                    False, True, False, True, False, True,
+                    False, False, False,
                 ],
             )
 
@@ -446,12 +502,103 @@ class MujocoSimulator:
             logger.error(f"Error loading OBJ file: {e}")
             raise
 
+
+
+#     def create_scene_with_obj_and_marker(
+#     self, obj_filepath, marker_filepath, scene_template="scene.xml"
+# ):
+#         """
+#         Creates a new scene XML file that includes both the OBJ file and Aruco marker.
+#         """
+#         tree = ET.parse(scene_template)
+#         root = tree.getroot()
+
+#         asset = root.find("asset")
+#         if asset is None:
+#             asset = ET.SubElement(root, "asset")
+
+#         mesh = ET.SubElement(asset, "mesh")
+#         mesh.set("name", "welding_mesh")
+#         mesh.set("file", obj_filepath)
+#         mesh.set("scale", MESH_SCALE)
+
+#         texture = ET.SubElement(asset, "texture")
+#         texture.set("name", "marker_texture")
+#         texture.set("type", "2d")
+#         texture.set("file", marker_filepath)
+#         texture.set("width", "512")
+#         texture.set("height", "731")
+
+#         material = ET.SubElement(asset, "material")
+#         material.set("name", "marker_material")
+#         material.set("texture", "marker_texture")
+#         material.set("texrepeat", "1 1")
+
+#         worldbody = root.find("worldbody")
+
+#         marker_body = ET.SubElement(worldbody, "body")
+#         marker_body.set("name", "marker_plane")
+#         marker_body.set("pos", WORKBENCH_POSITION)
+
+#         marker_geom = ET.SubElement(marker_body, "geom")
+#         marker_geom.set("type", "plane")
+#         marker_geom.set("size", WORKBENCH_SIZE)
+#         marker_geom.set("material", "marker_material")
+
+#         body = ET.SubElement(worldbody, "body")
+#         body.set("name", "welding_object")
+#         body.set("pos", MESH_POSITION)
+
+#         geom = ET.SubElement(body, "geom")
+#         geom.set("type", "mesh")
+#         geom.set("mesh", "welding_mesh")
+#         geom.set("rgba", "0.8 0.8 0.8 1")
+        
+
+#         new_scene_path = "scene_with_obj.xml"
+#         tree.write(new_scene_path)
+#         return new_scene_path
+
     def create_scene_with_obj_and_marker(
         self, obj_filepath, marker_filepath, scene_template="scene.xml"
     ):
-        """Creates a new scene XML file that includes both the OBJ file and Aruco marker"""
+        """Creates a new scene XML file that includes both the OBJ file and Aruco marker with collision detection"""
         tree = ET.parse(scene_template)
         root = tree.getroot()
+
+        contact = ET.Element("contact")
+        pair = ET.SubElement(contact, "pair")
+        pair.set("geom1", "link6_collision")
+        pair.set("geom2", "welding_mesh_collision")
+        pair.set("margin", "0.0001")  # 0.1mm safety margin
+        pair.set("solref", "0.01 1")  # Quicker contact response
+        pair.set("solimp", "0.95 0.99 0.001")
+        root.insert(1, contact)
+
+        default = root.find("default")
+        if default is None:
+            default = ET.Element("default")
+            root.insert(1, default)
+
+        col_default = ET.SubElement(default, "default")
+        col_default.set("class", "collision")
+        col_geom = ET.SubElement(col_default, "geom")
+        col_geom.set("contype", "1")
+        col_geom.set("conaffinity", "1")
+        col_geom.set("condim", "3")
+        col_geom.set("priority", "1")
+
+        option = root.find("option")
+        if option is None:
+            option = ET.SubElement(root, "option")
+
+        flag = option.find("flag")
+        if flag is None:
+            flag = ET.SubElement(option, "flag")
+
+        flag.set("contact", "enable")
+        flag.set("filterparent", "disable")
+        option.set("timestep", "0.002")
 
         asset = root.find("asset")
         if asset is None:
@@ -492,11 +639,75 @@ class MujocoSimulator:
         geom = ET.SubElement(body, "geom")
         geom.set("type", "mesh")
         geom.set("mesh", "welding_mesh")
-        geom.set("rgba", "0.8 0.8 0.8 1")
+        geom.set("group", "1")
+
+        collision = ET.SubElement(body, "geom")
+        collision.set("name", "welding_mesh_collision")
+        collision.set("type", "mesh")
+        collision.set("mesh", "welding_mesh")
+        collision.set("class", "collision")
+        collision.set("rgba", "1 0 0 0.3")
+        collision.set("margin", "0.0001") 
 
         new_scene_path = "scene_with_obj.xml"
         tree.write(new_scene_path)
+
+        robot_tree = ET.parse("TerafacMini.xml")
+        robot_root = robot_tree.getroot()
+
+        link6 = robot_root.find(".//body[@name='link6']")
+        if link6 is not None:
+            collision = ET.SubElement(link6, "geom")
+            collision.set("name", "link6_collision")
+            collision.set("type", "mesh")
+            collision.set("mesh", "link6")
+            collision.set("rgba", "1 0 0 0.3")
+            collision.set("class", "collision")
+            collision.set("margin", "0.005")
+
+        robot_tree.write("TerafacMini_with_collision.xml")
+
+        tree = ET.parse(new_scene_path)
+        root = tree.getroot()
+        include = root.find("include")
+        include.set("file", "TerafacMini_with_collision.xml")
+        tree.write(new_scene_path)
+
         return new_scene_path
+
+
+    def check_collision(self):
+        """
+        Check for collisions with improved detection and reporting
+        """
+
+        link6_id = mujoco.mj_name2id(
+            self.model, mujoco.mjtObj.mjOBJ_GEOM, "link6_collision"
+        )
+        mesh_id = mujoco.mj_name2id(
+            self.model, mujoco.mjtObj.mjOBJ_GEOM, "welding_mesh_collision"
+        )
+
+        force = np.zeros(6, dtype=np.float64)
+
+        for i in range(self.data.ncon):
+            contact = self.data.contact[i]
+
+            if (contact.geom1 == link6_id and contact.geom2 == mesh_id) or (
+                contact.geom1 == mesh_id and contact.geom2 == link6_id
+            ):
+
+                mujoco.mj_contactForce(self.model, self.data, i, force)
+                force_magnitude = np.linalg.norm(force[:3])
+
+                if contact.dist < -0.000001:
+                    print(
+                        f"Collision detected! Distance: {contact.dist}, Force: {force_magnitude:.3f}"
+                    )
+                    return True
+
+        return False
+
 
     def move_to_position(self, x, y, z):
         try:
@@ -551,6 +762,13 @@ class MujocoSimulator:
 
                 mujoco.mj_step(self.model, self.data)
 
+                #self.check_collision()
+                # Check for collision after movement
+                if self.check_collision():
+                    print("Collision occurred during movement!")
+                else:
+                    print("No collision detected after movement.")
+
                 current_pos = self.data.site_xpos[
                     mujoco.mj_name2id(
                         self.model, mujoco.mjtObj.mjOBJ_SITE, "attachment_site"
@@ -564,8 +782,10 @@ class MujocoSimulator:
 
                 progress = (i + 1) / len(range(num_steps + 1)) * 100
                 print(f"\rMovement progress: {progress:.1f}%", end="", flush=True)
-
-                time.sleep(self.movement_speed)
+                #print("gfjdsg: ", self.my_chain)
+                # Call the collision detection function
+        
+                time.sleep(0.00002) #0.002
 
             if not self.stop_current_movement:
                 self.movement_history.append(self.current_movement_path)
@@ -585,11 +805,20 @@ class MujocoSimulator:
             print(
                 f"Final position: [{final_pos[0]:.2f}, {final_pos[1]:.2f}, {final_pos[2]:.2f}]"
             )
+            
+               
+            
 
         except Exception as e:
             print(f"Error during movement: {str(e)}")
 
+
+
+
+
     def run_simulation(self):
+        # Load the scene with the given object URL
+        
         self.running = True
         while self.running:
             if self.viewer is not None and not CONTROL_PANEL:
@@ -613,7 +842,7 @@ class MujocoSimulator:
                 if not self.viewer.is_running():
                     break
 
-            time.sleep(0.001)
+            time.sleep(0.0001)
 
         self.running = False
         if self.viewer is not None:
@@ -626,6 +855,8 @@ class MujocoSimulator:
                 current_time = time.time()
                 if current_time - self.last_update_time >= 0.001:
                     self.last_update_time = current_time
+
+                
                 
                 self.viewer.sync()
                 
@@ -699,10 +930,43 @@ def run_simulation(coordinates, obj_url, simulator):
 
 if __name__ == "__main__":
     simulator = MujocoSimulator()
+    
+    
     if CONTROL_PANEL:
         simulator.load_scene({})
         gui = RobotControlGUI(simulator)
         gui.run()
+        
     else:
-        coordinates = [(0.1, 0.1, 0.1), (0.1, 0.2, 0.1), (0.2, 0.2, 0.1), (0.2, 0.2, 0.2)]
-        run_simulation(coordinates, "", simulator)
+        # print("Waiting for welding data...")
+        # while welding_data is None:
+        #     time.sleep(1)  # Wait for data from the SocketIO server
+
+        # coordinates = welding_data['coordinates']
+        # obj_url = welding_data['obj_url']
+
+        # print(f"Running simulation with coordinates: {coordinates}")
+        # print(f"Using OBJ URL: {obj_url}")
+
+        # run_simulation(coordinates, obj_url, simulator)
+        if __name__ == "__main__":
+            simulator = MujocoSimulator()
+
+            if len(sys.argv) > 1:
+                # Parse the JSON string from the command-line argument
+                try:
+                    welding_data = json.loads(sys.argv[1])
+                    coordinates = welding_data['coordinates']
+                    obj_url = welding_data['obj_url']
+
+                    print(f"Running simulation with coordinates: {coordinates}")
+                    print(f"Using OBJ URL: {obj_url}")
+
+                    run_simulation(coordinates, obj_url, simulator)
+                except (json.JSONDecodeError, KeyError) as e:
+                    print(f"Invalid welding data provided: {e}")
+                    sys.exit(1)
+            else:
+                print("No welding data provided. Exiting.")
+                sys.exit(1)
+
