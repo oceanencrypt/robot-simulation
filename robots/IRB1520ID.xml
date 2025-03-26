@@ -1,0 +1,130 @@
+<mujoco model="abb_irb1520id">
+  <compiler angle="radian" autolimits="true"/>
+
+  <option integrator="implicitfast"/>
+
+  <default>
+    <default class="abb">
+      <joint type="hinge" frictionloss="0.5" armature="0.2" limited="true"/>
+      <general gaintype="fixed" biastype="affine" gainprm="500" biasprm="0 -500 -50" forcerange="-150 150"/>
+      <default class="visual">
+        <geom type="mesh" contype="0" conaffinity="0" group="2"/>
+      </default>
+      <default class="collision">
+        <geom type="mesh" group="3" mass="0"/>
+      </default>
+    </default>
+  </default>
+
+  <asset>
+    <material name="abb_orange" rgba="1 0.43 0 1" specular="0.5" shininess="0.25"/>
+
+    <mesh name="base" file="./meshes/irb1520id/stl/visual/base.stl" scale="0.01 0.01 0.01"/>
+    <mesh name="base_col" file="./meshes/irb1520id/stl/collision/base.stl" scale="0.01 0.01 0.01"/>
+    <mesh name="link1" file="./meshes/irb1520id/stl/visual/link1.stl" scale="0.01 0.01 0.01"/>
+    <mesh name="link1_col" file="./meshes/irb1520id/stl/collision/link1.stl" scale="0.01 0.01 0.01"/>
+    <mesh name="link2" file="./meshes/irb1520id/stl/visual/link2.stl" scale="0.01 0.01 0.01"/>
+    <mesh name="link2_col" file="./meshes/irb1520id/stl/collision/link2.stl" scale="0.01 0.01 0.01"/>
+    <mesh name="link3" file="./meshes/irb1520id/stl/visual/link3.stl" scale="0.01 0.01 0.01"/>
+    <mesh name="link3_col" file="./meshes/irb1520id/stl/collision/link3.stl" scale="0.01 0.01 0.01"/>
+    <mesh name="link4" file="./meshes/irb1520id/stl/visual/link4.stl" scale="0.01 0.01 0.01"/>
+    <mesh name="link4_col" file="./meshes/irb1520id/stl/collision/link4.stl" scale="0.01 0.01 0.01"/>
+    <mesh name="link5" file="./meshes/irb1520id/stl/visual/link5.stl" scale="0.01 0.01 0.01"/>
+    <mesh name="link5_col" file="./meshes/irb1520id/stl/collision/link5.stl" scale="0.01 0.01 0.01"/>
+    <mesh name="link6" file="./meshes/irb1520id/stl/visual/link6.stl" scale="0.01 0.01 0.01"/>
+    <mesh name="link6_col" file="./meshes/irb1520id/stl/collision/link6.stl" scale="0.01 0.01 0.01"/>
+    <mesh name="torch" file="./meshes/irb1520id/stl/visual/torch.stl" scale="0.01 0.01 0.01"/>
+    <mesh name="torch_col" file="./meshes/irb1520id/stl/collision/torch.stl" scale="0.01 0.01 0.01"/>
+  </asset>
+
+  <worldbody>
+    <camera name="tracker" pos="-10.817 -22.425 18.664" xyaxes="0.854 -0.520 0.000 0.214 0.352 0.911"/>
+    <light name="spotlight" mode="targetbodycom" target="link_6" pos="0 -1 2"/>
+
+    <body name="base_link" childclass="abb">
+      <inertial pos="-0.122799 0.000948 -0.092564" mass="16.85" diaginertia="0.1790 0.4590 0.5590"/>
+      <geom name="base_vis" material="abb_orange" mesh="base" pos="0 0 1.7993" class="visual" rgba="0.5 0.5 0.5 1"/>
+      <geom name="base_col" mesh="base_col" pos="0 0 1.7993" class="collision"/>
+
+      <body name="link_1" pos="0 0 0">
+        <inertial pos="0.057107 0.188932 -0.000607" mass="14.04" diaginertia="0.2485 0.2724 0.3329"/>
+        <joint name="joint_1" axis="0 0 -1" pos="0 0 1.2693" range="-2.9670 2.9670"/>
+        <geom name="link1_vis" material="abb_orange" mesh="link1" pos="0 0 1.2693" quat="0.707107 0.707107 0 0" class="visual" rgba="0.5 0.5 0.5 1"/>
+        <geom name="link1_col" mesh="link1_col" pos="0 0 1.2693" quat="0.707107 0.707107 0 0" class="collision"/>
+
+        <body name="link_2" pos="1.6 -0.9 4.5693">
+          <inertial pos="0.000705 0.290047 0.035494" mass="4.1091" diaginertia="0.1373 0.007032 0.1407"/>
+          <joint name="joint_2" axis="0 1 0" range="-1.5708 2.6180"/>
+          <geom name="link2_vis" material="abb_orange" mesh="link2" quat="0.707107 0.707107 0 0" class="visual" rgba="0.5 0.5 0.5 1"/>
+          <geom name="link2_col" mesh="link2_col" quat="0.707107 0.707107 0 0" class="collision"/>
+
+          <body name="link_3" pos="0 -0.23 5.9255">
+            <inertial pos="0.06548 0.078265 -0.134469" mass="0.07683" diaginertia="0.009718 0.008392 0.01046"/>
+            <joint name="joint_3" axis="0 1 0" range="-1.7453 1.3963"/>
+            <geom name="link3_vis" material="abb_orange" mesh="link3" quat="0.707107 0.707107 0 0" class="visual" rgba="0.5 0.5 0.5 1"/>
+            <geom name="link3_col" mesh="link3_col" quat="0.707107 0.707107 0 0" class="collision"/>
+
+            <body name="link_4" pos="2.17 1.21677 2" quat="0.707107 0.707107 0 0">
+              <inertial pos="-0.057844 0.001716 -0.257144" mass="0.01018" diaginertia="0.008611 0.008908 0.008138"/>
+              <joint name="joint_4" axis="1 0 0" range="-2.7053 2.7053"/>
+              <geom name="link4_vis" material="abb_orange" mesh="link4" quat="0.707107 0 -0.707107 0" class="visual" rgba="0.5 0.5 0.5 1"/>
+              <geom name="link4_col" mesh="link4_col" quat="0.707107 0 -0.707107 0" class="collision"/>
+
+              <body name="link_5" pos="5.0637 0 -0.51885">
+                <inertial pos="0.079912 0.000066 0.025079" mass="0.004108" diaginertia="0.00005014 0.0002404 0.0002399"/>
+                <joint name="joint_5" axis="0 0 1" range="-2.3562 2.3562"/>
+                <geom name="link5_vis" material="abb_orange" mesh="link5" class="visual" rgba="0.5 0.5 0.5 1"/>
+                <geom name="link5_col" mesh="link5_col" class="collision"/>
+
+                <body name="link_6" pos="1.9 0 0.525" euler="3.1416 3.1416 0">
+                  <inertial pos="0.000015 -0.000103 -0.013642" mass="0.000710" diaginertia="0.000005086 0.000005109 0.000005635"/>
+                  <joint name="joint_6" axis="1 0 0" range="-3.4907 3.4907"/>
+                  <geom name="link6_vis" material="abb_orange" mesh="link6" quat="0.707107 0 0.707107 0" class="visual" rgba="0.5 0.5 0.5 1"/>
+                  <geom name="link6_col" mesh="link6_col" quat="0.707107 0 0.707107 0" class="collision"/>
+
+                  <body name="tool0" quat="0 0 1 0"> 
+                    <inertial pos="-0.001299 0.017065 0.125009" mass="0.0004342998" diaginertia="0.0003008 0.0002789 0.00004155"/>
+                    <geom name="torch_vis" material="abb_orange" mesh="torch" pos="0.1 0 0" quat="0.707107 0 0.707107 0" class="visual" rgba="0.5 0.5 0.5 1"/>
+                    <geom name="torch_col" mesh="torch_col" pos="0.1 0 0" quat="0.707107 0 0.707107 0" class="collision" />
+                    <site name="attachment_site" pos="3.85893 1.09393 0" quat="0.924 0 -0.383 0"  rgba="1 0 0 1" size="0.01"/>
+                  </body>
+                </body>
+              </body>
+            </body>
+          </body>
+        </body>
+      </body>
+    </body>
+  </worldbody>
+
+  <contact>
+    <!-- Exclude adjacent links from colliding -->
+    <exclude body1="base_link" body2="link_1"/>
+    <exclude body1="link_1" body2="link_2"/>
+    <exclude body1="link_2" body2="link_3"/>
+    <exclude body1="link_3" body2="link_4"/>
+    <exclude body1="link_4" body2="link_5"/>
+    <exclude body1="link_5" body2="link_6"/>
+    <exclude body1="link_6" body2="tool0"/>
+    <!-- Additional exclusions for non-adjacent links that might come close -->
+    <exclude body1="base_link" body2="link_2"/>
+    <exclude body1="link_1" body2="link_3"/>
+    <exclude body1="link_2" body2="link_4"/>
+    <exclude body1="link_3" body2="link_5"/>
+    <exclude body1="link_4" body2="link_6"/>
+    <exclude body1="link_5" body2="tool0"/>
+  </contact>
+
+  <actuator>
+    <position name="joint1_pos" joint="joint_1" ctrlrange="-2.9670 2.9670" kp="500" kv="200"/>
+    <position name="joint2_pos" joint="joint_2" ctrlrange="-1.5708 2.6180" kp="500" kv="200"/>
+    <position name="joint3_pos" joint="joint_3" ctrlrange="-1.7453 1.3963" kp="500" kv="200"/>
+    <position name="joint4_pos" joint="joint_4" ctrlrange="-2.7053 2.7053" kp="500" kv="200"/>
+    <position name="joint5_pos" joint="joint_5" ctrlrange="-2.3562 2.3562" kp="500" kv="200"/>
+    <position name="joint6_pos" joint="joint_6" ctrlrange="-3.4907 3.4907" kp="500" kv="200"/>
+  </actuator>
+
+  <keyframe>
+    <key name="home" qpos="0 0 0 0 0 0" ctrl="0 0 0 0 0 0"/>
+  </keyframe>
+</mujoco>

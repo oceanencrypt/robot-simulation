@@ -35,7 +35,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-CONTROL_PANEL = True
+CONTROL_PANEL = False
 
 DEFAULT_OBJ_URL = "https://terafac-welding-pro.s3.amazonaws.com/welding_objects/Corner_Joint_fe2890e3.obj"
 
@@ -44,6 +44,39 @@ WORKBENCH_POSITION = "0.3 0 0.001"
 
 MESH_SCALE = "0.002 0.002 0.002"
 MESH_POSITION = "0.3 0 0.061"
+
+ROBOTS = {
+    "terafacMini": {
+        "scene_template": "./scenes/terafacMini.xml",
+        "urdf": "./urdfs/terafacMini.urdf",
+        "active_links_mask": [
+            False,
+            True,
+            False,
+            True,
+            False,
+            True,
+            False,
+            True,
+            False,
+            True,
+            False,
+            True,
+            False,
+            False,
+            False,
+        ],
+        "active_link_indices": [1, 3, 5, 7, 9, 11],
+    },
+    "ABB_IRB_1520": {
+        "scene_template": "./scenes/ABB_IRB_1520.xml",
+        "urdf": "./urdfs/ABB_IRB_1520.urdf",
+        "active_links_mask": [False, True, True, True, True, True, True, False, False],
+        "active_link_indices": [1, 2, 3, 4, 5, 6],
+    },
+}
+
+ROBOT_NAME = "ABB_IRB_1520"
 
 
 def interpolate_positions(start, end, steps):
@@ -165,7 +198,7 @@ class RobotControlGUI:
     def update_joint_angles(self):
         angles = self.simulator.get_joint_angles()
         for i, angle in enumerate(angles):
-            self.joint_labels[i].config(text=f"Joint {i+1}: {angle:.3f} rad")
+            self.joint_labels[i].config(text=f"Joint {i+1}: {angle:.8f} rad")
         self.root.after(100, self.update_joint_angles)
 
     def move_robot(self):
@@ -390,7 +423,7 @@ class MujocoSimulator:
 
             if marker_filepath:
                 scene_path = self.create_scene_with_obj_and_marker(
-                    obj_filepath, marker_filepath
+                    obj_filepath, marker_filepath, ROBOTS[ROBOT_NAME]["scene_template"]
                 )
                 logger.info("✓ Scene created with OBJ and Aruco marker")
             else:
@@ -409,24 +442,8 @@ class MujocoSimulator:
             mujoco.mj_resetDataKeyframe(self.model, self.data, key_id)
 
             self.my_chain = ikpy.chain.Chain.from_urdf_file(
-                "Tera.urdf",
-                active_links_mask=[
-                    False,
-                    True,
-                    False,
-                    True,
-                    False,
-                    True,
-                    False,
-                    True,
-                    False,
-                    True,
-                    False,
-                    True,
-                    False,
-                    False,
-                    False,
-                ],
+                ROBOTS[ROBOT_NAME]["urdf"],
+                active_links_mask=ROBOTS[ROBOT_NAME]["active_links_mask"],
             )
 
             if self.viewer:
@@ -438,6 +455,9 @@ class MujocoSimulator:
                 show_left_ui=False,
                 show_right_ui=False,
             )
+            if self.model.ncam > 0:
+                self.viewer.cam.type = mujoco.mjtCamera.mjCAMERA_FIXED
+                self.viewer.cam.fixedcamid = 0
             self.renderer = mujoco.Renderer(self.model, width=640, height=480)
 
             logger.info("Successfully loaded OBJ file and set up simulation")
@@ -497,14 +517,26 @@ class MujocoSimulator:
         new_scene_path = "scene_with_obj.xml"
         tree.write(new_scene_path)
         return new_scene_path
+    
+    def map_joint_angles(self, ikpy_angles, robot_indices):
+        mapped_angles = np.zeros(len(robot_indices))
+        for i, index in enumerate(robot_indices):
+            mapped_angles[i] = ikpy_angles[index]
+        return mapped_angles
 
     def move_to_position(self, x, y, z):
         try:
             self.stop_current_movement = False
-            x *= -1
-            y *= -1
+            if ROBOT_NAME == "terafacMini":
+                x = -x
+                y = -y
             target_position = [x, y, z]
-            joint_angles = self.my_chain.inverse_kinematics(target_position)
+            target_orientation = [0, 0, 0]
+            joint_angles = self.my_chain.inverse_kinematics(
+                target_position,
+                target_orientation,
+                orientation_mode="all",
+            )
             achieved_position = self.my_chain.forward_kinematics(joint_angles)[:3, 3]
 
             print(f"Moving to target position: [{x:.2f}, {y:.2f}, {z:.2f}]")
@@ -522,8 +554,8 @@ class MujocoSimulator:
             )
             new_qpos = current_qpos.copy()
             matrix = np.array(joint_angles)
-            odd_indices = np.arange(1, 12, 2)
-            non_zero_values_at_odd_indices = matrix[odd_indices]
+            indices = ROBOTS["ABB_IRB_1520"]["active_link_indices"]
+            non_zero_values_at_odd_indices = [matrix[i] for i in indices]
             new_qpos[0:6] = non_zero_values_at_odd_indices
 
             print("CURRENT POS :::", current_qpos)
@@ -548,7 +580,6 @@ class MujocoSimulator:
 
                 safe_pos = pos
                 self.data.qpos[:] = safe_pos
-
                 mujoco.mj_step(self.model, self.data)
 
                 current_pos = self.data.site_xpos[
@@ -572,6 +603,7 @@ class MujocoSimulator:
 
                 self.data.qpos[:] = safe_pos
                 self.current_pos = safe_pos
+                print("SAFE POS TWO :::", self.current_pos)
                 mujoco.mj_step(self.model, self.data)
                 if self.viewer is not None:
                     self.viewer.sync()
@@ -586,8 +618,11 @@ class MujocoSimulator:
                 f"Final position: [{final_pos[0]:.2f}, {final_pos[1]:.2f}, {final_pos[2]:.2f}]"
             )
 
+            print("CURRENT _POS :::", self.current_pos)
+
         except Exception as e:
             print(f"Error during movement: {str(e)}")
+            raise e
 
     def run_simulation(self):
         self.running = True
@@ -603,7 +638,9 @@ class MujocoSimulator:
                     elif user_input.lower() == "move":
                         target_input = input("Enter new target position (x y z): ")
                         x, y, z = map(float, target_input.split())
-                        simulator.simulate(y, x, z)
+                        if ROBOT_NAME == "terafacMini":
+                            x, y = y, x
+                        simulator.simulate(x, y, z)
                     cmd = self.command_queue.get_nowait()
                     self.move_to_position(*cmd)
                 except ValueError as e:
@@ -626,9 +663,9 @@ class MujocoSimulator:
                 current_time = time.time()
                 if current_time - self.last_update_time >= 0.001:
                     self.last_update_time = current_time
-                
+
                 self.viewer.sync()
-                
+
                 try:
                     if self.command_queue.qsize() <= 1:
                         self.done_welding = True
@@ -638,16 +675,16 @@ class MujocoSimulator:
                     self.move_to_position(*cmd)
                 except queue.Empty:
                     pass
-                
+
                 if not self.viewer.is_running():
                     break
-                    
+
             time.sleep(0.001)
-        
+
         self.running = False
         if self.viewer is not None:
             self.viewer.close()
-  
+
     def get_joint_angles(self):
         if self.data is not None:
             return self.data.qpos[:6].copy()
@@ -672,7 +709,9 @@ def run_simulation(coordinates, obj_url, simulator):
     recording_started = False
 
     for x, y, z in coordinates:
-        simulator.command_queue.put((y, x, z))
+        if ROBOT_NAME == "terafacMini":
+            x, y = y, x
+        simulator.command_queue.put((x, y, z))
 
     while simulator.running:
         if not simulator.command_queue.empty():
@@ -691,7 +730,7 @@ def run_simulation(coordinates, obj_url, simulator):
 
         time.sleep(0.1)
 
-    simulator.running = True    
+    simulator.running = True
     simulator.viewer.close()
 
     return simulator.last_simulation
@@ -704,5 +743,10 @@ if __name__ == "__main__":
         gui = RobotControlGUI(simulator)
         gui.run()
     else:
-        coordinates = [(0.1, 0.1, 0.1), (0.1, 0.2, 0.1), (0.2, 0.2, 0.1), (0.2, 0.2, 0.2)]
+        coordinates = [
+            (0.1, 0.1, 0.1),
+            (0.1, 0.2, 0.1),
+            (0.2, 0.2, 0.1),
+            (0.2, 0.2, 0.2),
+        ]
         run_simulation(coordinates, "", simulator)

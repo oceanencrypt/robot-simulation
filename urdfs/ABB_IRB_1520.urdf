@@ -1,0 +1,239 @@
+<?xml version="1.0"?>
+<robot name="abb_irb1520id_scaled" xmlns:xacro="http://ros.org/wiki/xacro">
+  <link name="base_link">
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 1.7993"/>
+      <geometry>
+        <mesh filename="./meshes/irb1520id/stl/visual/base.stl" scale="0.01 0.01 0.01"/>
+      </geometry>
+      <material name="abb_orange">
+        <color rgba="1 0.43 0 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 1.7993"/>
+      <geometry>
+        <mesh filename="./meshes/irb1520id/stl/collision/base.stl" scale="0.01 0.01 0.01"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <link name="link_1">
+    <visual>
+      <origin rpy="1.5708 0 0" xyz="0 0 1.2693"/>
+      <geometry>
+        <mesh filename="./meshes/irb1520id/stl/visual/link1.stl" scale="0.01 0.01 0.01"/>
+      </geometry>
+      <material name="abb_orange"/>
+    </visual>
+    <collision>
+      <origin rpy="1.5708 0 0" xyz="0 0 1.2693"/>
+      <geometry>
+        <mesh filename="./meshes/irb1520id/stl/collision/link1.stl" scale="0.01 0.01 0.01"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <joint name="joint_1" type="revolute">
+    <origin rpy="0 0 0" xyz="0 0 0.0005"/>
+    <parent link="base_link"/>
+    <child link="link_1"/>
+    <axis xyz="0 0 1"/>
+    <limit 
+      effort="0" 
+      lower="-2.9670" 
+      upper="2.9670" 
+      velocity="3.142"/>
+    <dynamics damping="0" friction="0"/>
+  </joint>
+
+  <link name="link_2">
+    <visual>
+      <origin rpy="1.5708 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="./meshes/irb1520id/stl/visual/link2.stl" scale="0.01 0.01 0.01"/>
+      </geometry>
+      <material name="abb_orange"/>
+    </visual>
+    <collision>
+      <origin rpy="1.5708 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="./meshes/irb1520id/stl/collision/link2.stl" scale="0.01 0.01 0.01"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <joint name="joint_2" type="revolute">
+    <origin rpy="0 0 0" xyz="1.6 -0.9 4.5693"/>
+    <parent link="link_1"/>
+    <child link="link_2"/>
+    <axis xyz="0 1 0"/>
+    <limit 
+      effort="0" 
+      lower="-1.5708" 
+      upper="2.6180" 
+      velocity="3.142"/>
+    <dynamics damping="0" friction="0"/>
+  </joint>
+
+  <link name="link_3">
+    <visual>
+      <origin rpy="1.5708 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="./meshes/irb1520id/stl/visual/link3.stl" scale="0.01 0.01 0.01"/>
+      </geometry>
+      <material name="abb_orange"/>
+    </visual>
+    <collision>
+      <origin rpy="1.5708 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="./meshes/irb1520id/stl/collision/link3.stl" scale="0.01 0.01 0.01"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <joint name="joint_3" type="revolute">
+    <origin rpy="0 0 0" xyz="0 -0.23 5.9255"/>
+    <parent link="link_2"/>
+    <child link="link_3"/>
+    <axis xyz="0 1 0"/>
+    <limit 
+      effort="0" 
+      lower="-1.7453" 
+      upper="1.3963" 
+      velocity="3.142"/>
+    <dynamics damping="0" friction="0"/>
+  </joint>
+
+  <link name="link_4">
+    <visual>
+      <origin rpy="0 -1.5708 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="./meshes/irb1520id/stl/visual/link4.stl" scale="0.01 0.01 0.01"/>
+      </geometry>
+      <material name="abb_orange"/>
+    </visual>
+    <collision>
+      <origin rpy="0 -1.5708 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="./meshes/irb1520id/stl/collision/link4.stl" scale="0.01 0.01 0.01"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <joint name="joint_4" type="revolute">
+    <origin rpy="1.5708 0 0" xyz="2.17 1.21677 2"/>
+    <parent link="link_3"/>
+    <child link="link_4"/>
+    <axis xyz="1 0 0"/>
+    <limit 
+      effort="0" 
+      lower="-2.7053" 
+      upper="2.7053" 
+      velocity="5.585"/>
+    <dynamics damping="0" friction="0"/>
+  </joint>
+
+  <link name="link_5">
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="./meshes/irb1520id/stl/visual/link5.stl" scale="0.01 0.01 0.01"/>
+      </geometry>
+      <material name="abb_orange"/>
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="./meshes/irb1520id/stl/collision/link5.stl" scale="0.01 0.01 0.01"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <joint name="joint_5" type="revolute">
+    <origin rpy="0 0 0" xyz="5.0637 0 -0.51885"/>
+    <parent link="link_4"/>
+    <child link="link_5"/>
+    <axis xyz="0 0 1"/>
+    <limit 
+      effort="0" 
+      lower="-2.3562" 
+      upper="2.3562" 
+      velocity="6.632"/>
+    <dynamics damping="0" friction="0"/>
+  </joint>
+
+  <link name="link_6">
+    <visual>
+      <origin rpy="0 1.5708 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="./meshes/irb1520id/stl/visual/link6.stl" scale="0.01 0.01 0.01"/>
+      </geometry>
+      <material name="abb_orange"/>
+    </visual>
+    <collision>
+      <origin rpy="0 1.5708 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="./meshes/irb1520id/stl/collision/link6.stl" scale="0.01 0.01 0.01"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <joint name="joint_6" type="revolute">
+    <origin rpy="0 0 0" xyz="1.9 0 0.525"/>
+    <parent link="link_5"/>
+    <child link="link_6"/>
+    <axis xyz="1 0 0"/>
+    <limit 
+      effort="0" 
+      lower="-3.4907" 
+      upper="3.4907" 
+      velocity="8.029"/>
+    <dynamics damping="0" friction="0"/>
+  </joint>
+
+  <link name="tool0">
+      <visual>
+      <origin rpy="0 1.5708 0" xyz="0.1 0 0"/>
+      <geometry>
+        <mesh filename="./meshes/irb1520id/stl/visual/torch.stl" scale="0.01 0.01 0.01"/>
+      </geometry>
+      <material name="abb_orange"/>
+    </visual>
+    <collision>
+      <origin rpy="0 1.5708 0" xyz="0.1 0 0"/>
+      <geometry>
+        <mesh filename="./meshes/irb1520id/stl/collision/torch.stl" scale="0.01 0.01 0.01"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <joint name="joint_6-tool0" type="fixed">
+    <parent link="link_6"/>
+    <child link="tool0"/>
+    <origin rpy="3.1416 0 0" xyz="0 0 0"/>
+  </joint>
+
+    <link name="attachment">
+      <inertial>
+         <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+         <mass value="0.001"/>
+         <inertia ixx="1e-09" iyy="1e-09" izz="1e-09" ixy="0" ixz="0" iyz="0"/>
+      </inertial>
+       <visual>
+         <origin xyz="0 0 0" rpy="0 0 0"/>
+         <geometry>
+            <cylinder radius="0.02" length="0.1"/>
+         </geometry>
+         <material name="orange">
+            <color rgba="0 0 0 1"/>
+         </material>
+      </visual>
+   </link>
+    
+   <joint type="fixed" name="tool0-attachement">
+      <parent link="tool0"/>
+      <child link="attachment"/>
+      <origin xyz="3.85893 1.09393 0" rpy="1.5708 0 -0.784"/>
+   </joint>
+</robot>

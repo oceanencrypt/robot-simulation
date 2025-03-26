@@ -1,6 +1,6 @@
-<mujoco model="terafac mini scene">
+<mujoco model="ABB IRB 1520 scene">
   
-  <include file="TerafacMini.xml" />
+  <include file="./robots/IRB1520ID.xml" />
 
   <statistic center="0.1 0 1" extent="1.5" />
 
@@ -14,10 +14,10 @@
     <texture type="skybox" builtin="gradient" rgb1="0.3 0.5 0.7" rgb2="0 0 0" width="512" height="3072" />
     <texture type="2d" name="groundplane" builtin="checker" mark="edge" rgb1="0.2 0.3 0.4" rgb2="0.1 0.2 0.3" markrgb="0.8 0.8 0.8" width="300" height="300" />
     <material name="groundplane" texture="groundplane" texuniform="true" texrepeat="5 5" reflectance="0.2" />
-  <mesh name="welding_mesh" file="assets\391df03a-7f4a-4d5e-99d0-2d133c746c0c.obj" scale="0.002 0.002 0.002" /><texture name="marker_texture" type="2d" file="assets\workbench.png" width="512" height="731" /><material name="marker_material" texture="marker_texture" texrepeat="1 1" /></asset>
+  <mesh name="welding_mesh" file="assets\Corner_Joint_fe2890e3.obj" scale="0.002 0.002 0.002" /><texture name="marker_texture" type="2d" file="assets\workbench.png" width="512" height="731" /><material name="marker_material" texture="marker_texture" texrepeat="1 1" /></asset>
 
   <worldbody>
-    <camera name="side_view" pos="1.445 -2.865 1.145" xyaxes="0.971 0.241 0.000 -0.030 0.120 0.992" />
+    <camera pos="-10.817 -22.425 18.664" xyaxes="0.854 -0.520 0.000 0.214 0.352 0.911" />
     <light pos="0 0 1.5" dir="0 0 -1" directional="true" />
     <geom name="floor" size="0 0 0.05" type="plane" material="groundplane" />
 
